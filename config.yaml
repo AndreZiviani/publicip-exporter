@@ -1,0 +1,40 @@
+server:
+  listen_address: ":9101"
+
+ipinfo:
+  # Optional API token from ipinfo.io for higher rate limits.
+  # token: "your_token_here"
+  refresh_interval: 60s
+
+http:
+  interval: 30s
+  timeout: 10s
+  destinations:
+    - name: google
+      url: https://google.com
+    - name: cloudflare
+      url: https://cloudflare.com
+    # - name: internal-api
+    #   url: https://internal.example.com/health
+    #   method: GET
+    #   tls_skip_verify: true
+
+ping:
+  interval: 5s
+  count: 3
+  timeout: 5s
+  # Set to true if running as root or with CAP_NET_RAW (raw ICMP).
+  # Set to false to use unprivileged UDP-based pings (works without root on most systems).
+  privileged: false
+  destinations:
+    - name: google-dns
+      host: 8.8.8.8
+      address_family: ipv4   # ipv4 | ipv6 | both (default: both)
+    - name: cloudflare-dns
+      host: 1.1.1.1
+      address_family: ipv4
+    - name: google
+      host: google.com
+      # address_family omitted → defaults to both (probes IPv4 and IPv6)
+    - name: cloudflare
+      host: cloudflare.com
