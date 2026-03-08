@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
@@ -110,10 +111,20 @@ func (c *IPInfoCollector) refresh(ctx context.Context) {
 	c.mu.Unlock()
 }
 
+// token returns the API token, preferring the IPINFO_TOKEN environment variable
+// over the value set in config, so a Kubernetes secret can be injected without
+// embedding credentials in the ConfigMap.
+func (c *IPInfoCollector) token() string {
+	if t := os.Getenv("IPINFO_TOKEN"); t != "" {
+		return t
+	}
+	return c.config.Token
+}
+
 func (c *IPInfoCollector) fetch(ctx context.Context, client *http.Client, base string) (*ipInfoResponse, error) {
 	url := base
-	if c.config.Token != "" {
-		url = fmt.Sprintf("%s?token=%s", base, c.config.Token)
+	if t := c.token(); t != "" {
+		url = fmt.Sprintf("%s?token=%s", base, t)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
