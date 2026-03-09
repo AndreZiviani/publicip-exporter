@@ -189,6 +189,8 @@ func (c *PingCollector) ping(ctx context.Context, dest Destination, af AddressFa
 		}
 	}()
 
+	log.Debug("starting ping", "count", c.config.Count, "timeout", c.config.Timeout, "network", afNetwork(af))
+
 	if err := pinger.Run(); err != nil {
 		if ctx.Err() != nil {
 			return
@@ -199,6 +201,7 @@ func (c *PingCollector) ping(ctx context.Context, dest Destination, af AddressFa
 	}
 
 	s := pinger.Statistics()
+	log.Debug("ping complete", "avg_rtt", s.AvgRtt, "min_rtt", s.MinRtt, "max_rtt", s.MaxRtt, "loss_pct", s.PacketLoss)
 	c.store(key, pingStats{
 		avgRTT:    s.AvgRtt.Seconds(),
 		minRTT:    s.MinRtt.Seconds(),

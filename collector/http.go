@@ -129,6 +129,8 @@ func (c *HTTPCollector) probe(ctx context.Context, dest HTTPDestination) {
 		return
 	}
 
+	slog.Debug("probing HTTP destination", "destination", dest.Name, "url", dest.URL, "method", dest.method())
+
 	start := time.Now()
 	resp, err := c.clients[dest.Name].Do(req)
 	duration := time.Since(start).Seconds()
@@ -149,6 +151,7 @@ func (c *HTTPCollector) probe(ctx context.Context, dest HTTPDestination) {
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		success = 1
 	}
+	slog.Debug("HTTP probe complete", "destination", dest.Name, "status", resp.StatusCode, "duration", duration, "success", success == 1)
 	c.store(dest.Name, httpStats{
 		durationSeconds: duration,
 		statusCode:      float64(resp.StatusCode),

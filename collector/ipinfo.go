@@ -93,14 +93,20 @@ func (c *IPInfoCollector) Start(ctx context.Context) {
 }
 
 func (c *IPInfoCollector) refresh(ctx context.Context) {
+	slog.Debug("refreshing public IP info")
+
 	ipv4, err := c.fetch(ctx, c.ipv4Client, "https://ipinfo.io/json")
 	if err != nil {
 		slog.Warn("failed to fetch IPv4 public IP info", "error", err)
+	} else {
+		slog.Debug("fetched IPv4 public IP info", "ip", ipv4.IP, "org", ipv4.Org, "country", ipv4.Country)
 	}
 
 	ipv6, err := c.fetch(ctx, c.ipv6Client, "https://v6.ipinfo.io/json")
 	if err != nil {
 		slog.Warn("failed to fetch IPv6 public IP info", "error", err)
+	} else {
+		slog.Debug("fetched IPv6 public IP info", "ip", ipv6.IP, "org", ipv6.Org, "country", ipv6.Country)
 	}
 
 	c.mu.Lock()
@@ -135,11 +141,13 @@ func (c *IPInfoCollector) fetch(ctx context.Context, client *http.Client, base s
 	}
 	req.Header.Set("Accept", "application/json")
 
+	slog.Debug("fetching ipinfo", "url", base)
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
+	slog.Debug("ipinfo response", "url", base, "status", resp.StatusCode)
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("unexpected status %d from ipinfo.io", resp.StatusCode)
