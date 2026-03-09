@@ -51,12 +51,16 @@ func main() {
 	httpCollector := collector.NewHTTPCollector(cfg.HTTP)
 	reg.MustRegister(httpCollector)
 
+	dnsCollector := collector.NewDNSCollector(cfg.DNS)
+	reg.MustRegister(dnsCollector)
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	go ipInfoCollector.Start(ctx)
 	go pingCollector.Start(ctx)
 	go httpCollector.Start(ctx)
+	go dnsCollector.Start(ctx)
 
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{

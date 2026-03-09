@@ -20,6 +20,7 @@ type Config struct {
 	IPInfo collector.IPInfoConfig  `yaml:"ipinfo"`
 	Ping   collector.PingConfig    `yaml:"ping"`
 	HTTP   collector.HTTPConfig    `yaml:"http"`
+	DNS    collector.DNSConfig     `yaml:"dns"`
 }
 
 func defaultConfig() *Config {
@@ -39,6 +40,10 @@ func defaultConfig() *Config {
 		HTTP: collector.HTTPConfig{
 			Interval: 30 * time.Second,
 			Timeout:  10 * time.Second,
+		},
+		DNS: collector.DNSConfig{
+			Interval: 30 * time.Second,
+			Timeout:  5 * time.Second,
 		},
 	}
 }
