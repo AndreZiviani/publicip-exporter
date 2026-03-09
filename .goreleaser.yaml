@@ -27,7 +27,8 @@ checksum:
   name_template: checksums.txt
 
 dockers_v2:
-  - images:
+  - sbom: false
+    images:
       - "{{ .Env.DOCKERHUB_USERNAME }}/publicip-exporter"
       - "ghcr.io/{{ .Env.REPO_OWNER }}/publicip-exporter"
     tags:
