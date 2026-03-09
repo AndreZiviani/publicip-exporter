@@ -38,16 +38,7 @@ func (d HTTPDestination) method() string {
 
 // families returns the address families this destination should probe.
 func (d HTTPDestination) families() []AddressFamily {
-	switch d.AddressFamily {
-	case AddressFamilyIPv4:
-		return []AddressFamily{AddressFamilyIPv4}
-	case AddressFamilyIPv6:
-		return []AddressFamily{AddressFamilyIPv6}
-	case AddressFamilyBoth:
-		return []AddressFamily{AddressFamilyIPv4, AddressFamilyIPv6}
-	default:
-		return []AddressFamily{AddressFamilyIPv4, AddressFamilyIPv6}
-	}
+	return d.AddressFamily.Families()
 }
 
 type httpStatsKey struct {
@@ -180,9 +171,9 @@ func (c *HTTPCollector) probe(ctx context.Context, dest HTTPDestination, af Addr
 		c.store(key, httpStats{durationSeconds: duration})
 		return
 	}
-	// Drain and discard body so the connection can be reused.
-	_, _ = io.Copy(io.Discard, resp.Body)
-	resp.Body.Close()
+	defer resp.Body.Close()
+	// Drain up to 1 MB of the body so the connection can be reused.
+	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 1<<20))
 
 	success := 0.0
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {

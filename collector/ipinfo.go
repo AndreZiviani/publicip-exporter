@@ -95,26 +95,43 @@ func (c *IPInfoCollector) Start(ctx context.Context) {
 func (c *IPInfoCollector) refresh(ctx context.Context) {
 	slog.Debug("refreshing public IP info")
 
-	ipv4, err := c.fetch(ctx, c.ipv4Client, "https://ipinfo.io/json")
-	if err != nil {
-		slog.Warn("failed to fetch IPv4 public IP info", "error", err)
-	} else {
-		slog.Debug("fetched IPv4 public IP info", "ip", ipv4.IP, "org", ipv4.Org, "country", ipv4.Country)
+	type result struct {
+		info *ipInfoResponse
+		err  error
 	}
 
-	ipv6, err := c.fetch(ctx, c.ipv6Client, "https://v6.ipinfo.io/json")
-	if err != nil {
-		slog.Warn("failed to fetch IPv6 public IP info", "error", err)
+	v4ch := make(chan result, 1)
+	v6ch := make(chan result, 1)
+
+	go func() {
+		info, err := c.fetch(ctx, c.ipv4Client, "https://ipinfo.io/json")
+		v4ch <- result{info, err}
+	}()
+	go func() {
+		info, err := c.fetch(ctx, c.ipv6Client, "https://v6.ipinfo.io/json")
+		v6ch <- result{info, err}
+	}()
+
+	v4 := <-v4ch
+	v6 := <-v6ch
+
+	if v4.err != nil {
+		slog.Warn("failed to fetch IPv4 public IP info", "error", v4.err)
 	} else {
-		slog.Debug("fetched IPv6 public IP info", "ip", ipv6.IP, "org", ipv6.Org, "country", ipv6.Country)
+		slog.Debug("fetched IPv4 public IP info", "ip", v4.info.IP, "org", v4.info.Org, "country", v4.info.Country)
+	}
+	if v6.err != nil {
+		slog.Warn("failed to fetch IPv6 public IP info", "error", v6.err)
+	} else {
+		slog.Debug("fetched IPv6 public IP info", "ip", v6.info.IP, "org", v6.info.Org, "country", v6.info.Country)
 	}
 
 	c.mu.Lock()
-	if ipv4 != nil {
-		c.ipv4Info = ipv4
+	if v4.info != nil {
+		c.ipv4Info = v4.info
 	}
-	if ipv6 != nil {
-		c.ipv6Info = ipv6
+	if v6.info != nil {
+		c.ipv6Info = v6.info
 	}
 	c.mu.Unlock()
 }

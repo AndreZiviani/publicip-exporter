@@ -78,7 +78,8 @@ type dnsStats struct {
 // duration and success metrics. It uses the standard library net.Resolver
 // with a custom nameserver to perform A or AAAA lookups.
 type DNSCollector struct {
-	config DNSConfig
+	config    DNSConfig
+	resolvers map[dnsStatsKey]*net.Resolver
 
 	mu    sync.RWMutex
 	stats map[dnsStatsKey]dnsStats
@@ -89,10 +90,23 @@ type DNSCollector struct {
 
 // NewDNSCollector creates a new DNSCollector.
 func NewDNSCollector(cfg DNSConfig) *DNSCollector {
+	resolvers := make(map[dnsStatsKey]*net.Resolver, len(cfg.Destinations))
+	for _, dest := range cfg.Destinations {
+		dest := dest // capture for closure
+		resolvers[dnsStatsKey(dest.Name)] = &net.Resolver{
+			PreferGo: true,
+			Dial: func(ctx context.Context, _, _ string) (net.Conn, error) {
+				d := net.Dialer{Timeout: cfg.Timeout}
+				return d.DialContext(ctx, dest.dialNetwork(), dest.serverAddr())
+			},
+		}
+	}
+
 	labels := []string{"destination", "server", "query", "query_type"}
 	return &DNSCollector{
-		config: cfg,
-		stats:  make(map[dnsStatsKey]dnsStats),
+		config:    cfg,
+		resolvers: resolvers,
+		stats:     make(map[dnsStatsKey]dnsStats),
 		durationDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(metricNamespace, "dns_probe", "duration_seconds"),
 			"Duration of the last DNS probe query.",
@@ -141,13 +155,7 @@ func (c *DNSCollector) probe(ctx context.Context, dest DNSDestination) {
 	qt := dest.resolvedQueryType()
 	log := slog.With("destination", dest.Name, "server", dest.Server, "query", dest.Query, "query_type", qt)
 
-	resolver := &net.Resolver{
-		PreferGo: true,
-		Dial: func(ctx context.Context, _, _ string) (net.Conn, error) {
-			d := net.Dialer{Timeout: c.config.Timeout}
-			return d.DialContext(ctx, dest.dialNetwork(), dest.serverAddr())
-		},
-	}
+	resolver := c.resolvers[key]
 
 	queryCtx, cancel := context.WithTimeout(ctx, c.config.Timeout)
 	defer cancel()

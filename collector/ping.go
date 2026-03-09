@@ -24,6 +24,25 @@ const (
 	AddressFamilyBoth AddressFamily = "both"
 )
 
+var (
+	familiesIPv4 = []AddressFamily{AddressFamilyIPv4}
+	familiesIPv6 = []AddressFamily{AddressFamilyIPv6}
+	familiesBoth = []AddressFamily{AddressFamilyIPv4, AddressFamilyIPv6}
+)
+
+// Families returns the individual address families represented by af.
+// "both" (and the zero value) expand to {ipv4, ipv6}.
+func (af AddressFamily) Families() []AddressFamily {
+	switch af {
+	case AddressFamilyIPv4:
+		return familiesIPv4
+	case AddressFamilyIPv6:
+		return familiesIPv6
+	default: // both or unset
+		return familiesBoth
+	}
+}
+
 // PingConfig holds configuration for the ping collector.
 type PingConfig struct {
 	Interval     time.Duration `yaml:"interval" validate:"gt=0"`
@@ -44,22 +63,17 @@ type Destination struct {
 // When address_family is unset and the host is a literal IP address, the
 // family is inferred automatically instead of defaulting to both.
 func (d Destination) families() []AddressFamily {
-	switch d.AddressFamily {
-	case AddressFamilyIPv4:
-		return []AddressFamily{AddressFamilyIPv4}
-	case AddressFamilyIPv6:
-		return []AddressFamily{AddressFamilyIPv6}
-	case AddressFamilyBoth:
-		return []AddressFamily{AddressFamilyIPv4, AddressFamilyIPv6}
-	default: // unset — infer from literal IP, else probe both
-		if ip := net.ParseIP(d.Host); ip != nil {
-			if ip.To4() != nil {
-				return []AddressFamily{AddressFamilyIPv4}
-			}
-			return []AddressFamily{AddressFamilyIPv6}
-		}
-		return []AddressFamily{AddressFamilyIPv4, AddressFamilyIPv6}
+	if d.AddressFamily != "" {
+		return d.AddressFamily.Families()
 	}
+	// Unset — infer from literal IP, else probe both.
+	if ip := net.ParseIP(d.Host); ip != nil {
+		if ip.To4() != nil {
+			return []AddressFamily{AddressFamilyIPv4}
+		}
+		return []AddressFamily{AddressFamilyIPv6}
+	}
+	return AddressFamilyBoth.Families()
 }
 
 type statsKey struct {
