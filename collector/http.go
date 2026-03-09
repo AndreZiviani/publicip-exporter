@@ -15,18 +15,18 @@ import (
 
 // HTTPConfig holds configuration for the HTTP probe collector.
 type HTTPConfig struct {
-	Interval     time.Duration     `yaml:"interval"`
-	Timeout      time.Duration     `yaml:"timeout"`
-	Destinations []HTTPDestination `yaml:"destinations"`
+	Interval     time.Duration     `yaml:"interval" validate:"gt=0"`
+	Timeout      time.Duration     `yaml:"timeout" validate:"gt=0"`
+	Destinations []HTTPDestination `yaml:"destinations" validate:"dive"`
 }
 
 // HTTPDestination is a single HTTP probe target.
 type HTTPDestination struct {
-	Name          string        `yaml:"name"`
-	URL           string        `yaml:"url"`
-	Method        string        `yaml:"method"`          // default: GET
-	TLSSkipVerify bool          `yaml:"tls_skip_verify"` // skip TLS certificate verification
-	AddressFamily AddressFamily `yaml:"address_family"`  // ipv4 | ipv6 | both (default: both)
+	Name          string        `yaml:"name" validate:"required"`
+	URL           string        `yaml:"url" validate:"required,http_url"`
+	Method        string        `yaml:"method" validate:"omitempty,oneof=GET POST PUT DELETE HEAD OPTIONS PATCH"` // default: GET
+	TLSSkipVerify bool          `yaml:"tls_skip_verify"`                                                         // skip TLS certificate verification
+	AddressFamily AddressFamily `yaml:"address_family" validate:"omitempty,oneof=ipv4 ipv6 both"`                // ipv4 | ipv6 | both (default: both)
 }
 
 func (d HTTPDestination) method() string {

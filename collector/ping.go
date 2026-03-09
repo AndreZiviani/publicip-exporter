@@ -26,18 +26,18 @@ const (
 
 // PingConfig holds configuration for the ping collector.
 type PingConfig struct {
-	Interval     time.Duration `yaml:"interval"`
-	Count        int           `yaml:"count"`
-	Timeout      time.Duration `yaml:"timeout"`
+	Interval     time.Duration `yaml:"interval" validate:"gt=0"`
+	Count        int           `yaml:"count" validate:"gt=0"`
+	Timeout      time.Duration `yaml:"timeout" validate:"gt=0"`
 	Privileged   bool          `yaml:"privileged"`
-	Destinations []Destination `yaml:"destinations"`
+	Destinations []Destination `yaml:"destinations" validate:"dive"`
 }
 
 // Destination is a single ping target.
 type Destination struct {
-	Name          string        `yaml:"name"`
-	Host          string        `yaml:"host"`
-	AddressFamily AddressFamily `yaml:"address_family"` // ipv4 | ipv6 | both (default: both)
+	Name          string        `yaml:"name" validate:"required"`
+	Host          string        `yaml:"host" validate:"required,hostname|ip"`
+	AddressFamily AddressFamily `yaml:"address_family" validate:"omitempty,oneof=ipv4 ipv6 both"` // ipv4 | ipv6 | both (default: both)
 }
 
 // families returns the address families this destination should probe.

@@ -6,13 +6,14 @@ import (
 	"os"
 	"time"
 
+	"github.com/go-playground/validator/v10"
 	"gopkg.in/yaml.v3"
 
 	"publicip-exporter/collector"
 )
 
 type ServerConfig struct {
-	ListenAddress string `yaml:"listen_address"`
+	ListenAddress string `yaml:"listen_address" validate:"required"`
 }
 
 type Config struct {
@@ -61,6 +62,11 @@ func loadConfig(path string) (*Config, error) {
 
 	if err := yaml.Unmarshal(data, cfg); err != nil {
 		return nil, fmt.Errorf("parsing config %q: %w", path, err)
+	}
+
+	validate := validator.New(validator.WithRequiredStructEnabled())
+	if err := validate.Struct(cfg); err != nil {
+		return nil, fmt.Errorf("validating config %q: %w", path, err)
 	}
 
 	return cfg, nil

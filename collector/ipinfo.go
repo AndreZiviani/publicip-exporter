@@ -19,7 +19,7 @@ import (
 // IPInfoConfig holds configuration for the IPInfo collector.
 type IPInfoConfig struct {
 	Token           string        `yaml:"token"`
-	RefreshInterval time.Duration `yaml:"refresh_interval"`
+	RefreshInterval time.Duration `yaml:"refresh_interval" validate:"gt=0"`
 }
 
 type ipInfoResponse struct {

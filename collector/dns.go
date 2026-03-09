@@ -20,17 +20,17 @@ const (
 
 // DNSConfig holds configuration for the DNS probe collector.
 type DNSConfig struct {
-	Interval     time.Duration    `yaml:"interval"`
-	Timeout      time.Duration    `yaml:"timeout"`
-	Destinations []DNSDestination `yaml:"destinations"`
+	Interval     time.Duration    `yaml:"interval" validate:"gt=0"`
+	Timeout      time.Duration    `yaml:"timeout" validate:"gt=0"`
+	Destinations []DNSDestination `yaml:"destinations" validate:"dive"`
 }
 
 // DNSDestination is a single DNS probe target.
 type DNSDestination struct {
-	Name      string       `yaml:"name"`
-	Server    string       `yaml:"server"`     // nameserver IP address (e.g. "8.8.8.8", "[2001:4860:4860::8888]")
-	Query     string       `yaml:"query"`      // domain name to resolve (e.g. "google.com")
-	QueryType DNSQueryType `yaml:"query_type"` // A | AAAA (default: A)
+	Name      string       `yaml:"name" validate:"required"`
+	Server    string       `yaml:"server" validate:"required,ip"`     // nameserver IP address (e.g. "8.8.8.8", "[2001:4860:4860::8888]")
+	Query     string       `yaml:"query" validate:"required,hostname"` // domain name to resolve (e.g. "google.com")
+	QueryType DNSQueryType `yaml:"query_type" validate:"omitempty,oneof=A AAAA"` // A | AAAA (default: A)
 }
 
 // resolvedQueryType returns the query type, defaulting to A.
