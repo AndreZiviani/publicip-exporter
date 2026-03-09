@@ -26,19 +26,53 @@ archives:
 checksum:
   name_template: checksums.txt
 
-dockers_v2:
-  - sbom: false
-    images:
-      - "{{ .Env.DOCKERHUB_USERNAME }}/publicip-exporter"
-      - "ghcr.io/{{ .Env.REPO_OWNER }}/publicip-exporter"
-    tags:
-      - "{{ .Tag }}"
-      - latest
-    labels:
-      "org.opencontainers.image.created": "{{ .Date }}"
-      "org.opencontainers.image.title": "{{ .ProjectName }}"
-      "org.opencontainers.image.revision": "{{ .FullCommit }}"
-      "org.opencontainers.image.version": "{{ .Version }}"
+dockers:
+  - goos: linux
+    goarch: amd64
+    use: docker
+    dockerfile: Dockerfile
+    image_templates:
+      - "{{ .Env.DOCKERHUB_USERNAME }}/publicip-exporter:{{ .Tag }}-amd64"
+      - "ghcr.io/{{ .Env.REPO_OWNER }}/publicip-exporter:{{ .Tag }}-amd64"
+    build_flag_templates:
+      - "--label=org.opencontainers.image.created={{ .Date }}"
+      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+
+  - goos: linux
+    goarch: arm64
+    use: docker
+    dockerfile: Dockerfile
+    image_templates:
+      - "{{ .Env.DOCKERHUB_USERNAME }}/publicip-exporter:{{ .Tag }}-arm64"
+      - "ghcr.io/{{ .Env.REPO_OWNER }}/publicip-exporter:{{ .Tag }}-arm64"
+    build_flag_templates:
+      - "--label=org.opencontainers.image.created={{ .Date }}"
+      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+
+docker_manifests:
+  - name_template: "{{ .Env.DOCKERHUB_USERNAME }}/publicip-exporter:{{ .Tag }}"
+    image_templates:
+      - "{{ .Env.DOCKERHUB_USERNAME }}/publicip-exporter:{{ .Tag }}-amd64"
+      - "{{ .Env.DOCKERHUB_USERNAME }}/publicip-exporter:{{ .Tag }}-arm64"
+
+  - name_template: "{{ .Env.DOCKERHUB_USERNAME }}/publicip-exporter:latest"
+    image_templates:
+      - "{{ .Env.DOCKERHUB_USERNAME }}/publicip-exporter:{{ .Tag }}-amd64"
+      - "{{ .Env.DOCKERHUB_USERNAME }}/publicip-exporter:{{ .Tag }}-arm64"
+
+  - name_template: "ghcr.io/{{ .Env.REPO_OWNER }}/publicip-exporter:{{ .Tag }}"
+    image_templates:
+      - "ghcr.io/{{ .Env.REPO_OWNER }}/publicip-exporter:{{ .Tag }}-amd64"
+      - "ghcr.io/{{ .Env.REPO_OWNER }}/publicip-exporter:{{ .Tag }}-arm64"
+
+  - name_template: "ghcr.io/{{ .Env.REPO_OWNER }}/publicip-exporter:latest"
+    image_templates:
+      - "ghcr.io/{{ .Env.REPO_OWNER }}/publicip-exporter:{{ .Tag }}-amd64"
+      - "ghcr.io/{{ .Env.REPO_OWNER }}/publicip-exporter:{{ .Tag }}-arm64"
 
 changelog:
   sort: asc
