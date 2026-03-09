@@ -5,6 +5,7 @@ USER 1000:1000
 
 WORKDIR /app
 
-COPY publicip-exporter /bin/publicip-exporter
+ARG TARGETPLATFORM=linux/amd64
+COPY ${TARGETPLATFORM}/publicip-exporter /bin/publicip-exporter
 
 ENTRYPOINT ["/bin/publicip-exporter"]
