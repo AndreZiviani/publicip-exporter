@@ -8,6 +8,8 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -66,7 +68,7 @@ func NewIPInfoCollector(cfg IPInfoConfig) *IPInfoCollector {
 		ipv6Client: ipv6Client,
 		infoDesc: prometheus.NewDesc(
 			"publicip_info",
-			"Public IP address information from ipinfo.io. Value is always 1.",
+			"Public IP address information from ipinfo.io. Value is the AS number.",
 			[]string{"version", "ip", "hostname", "city", "region", "country", "org", "timezone"},
 			nil,
 		),
@@ -150,6 +152,19 @@ func (c *IPInfoCollector) fetch(ctx context.Context, client *http.Client, base s
 	return &info, nil
 }
 
+// parseASNumber extracts the numeric AS number from an org string like
+// "AS13335 Cloudflare, Inc." and returns it as a float64. Returns 0 if parsing fails.
+func parseASNumber(org string) float64 {
+	// org format: "AS<number> <name>"
+	prefix, _, _ := strings.Cut(org, " ")
+	prefix = strings.TrimPrefix(prefix, "AS")
+	n, err := strconv.ParseFloat(prefix, 64)
+	if err != nil {
+		return 0
+	}
+	return n
+}
+
 // Describe implements prometheus.Collector.
 func (c *IPInfoCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.infoDesc
@@ -164,14 +179,14 @@ func (c *IPInfoCollector) Collect(ch chan<- prometheus.Metric) {
 
 	if ipv4Info != nil {
 		ch <- prometheus.MustNewConstMetric(
-			c.infoDesc, prometheus.GaugeValue, 1,
+			c.infoDesc, prometheus.GaugeValue, parseASNumber(ipv4Info.Org),
 			"4", ipv4Info.IP, ipv4Info.Hostname, ipv4Info.City,
 			ipv4Info.Region, ipv4Info.Country, ipv4Info.Org, ipv4Info.Timezone,
 		)
 	}
 	if ipv6Info != nil {
 		ch <- prometheus.MustNewConstMetric(
-			c.infoDesc, prometheus.GaugeValue, 1,
+			c.infoDesc, prometheus.GaugeValue, parseASNumber(ipv6Info.Org),
 			"6", ipv6Info.IP, ipv6Info.Hostname, ipv6Info.City,
 			ipv6Info.Region, ipv6Info.Country, ipv6Info.Org, ipv6Info.Timezone,
 		)
