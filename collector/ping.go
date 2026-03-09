@@ -11,6 +11,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+// metricNamespace is the Prometheus namespace prefix for all metrics exported
+// by this exporter.
+const metricNamespace = "publicip"
+
 // AddressFamily controls which IP version is used for pinging.
 type AddressFamily string
 
@@ -91,22 +95,22 @@ func NewPingCollector(cfg PingConfig) *PingCollector {
 		config: cfg,
 		stats:  make(map[statsKey]pingStats),
 		rttAvgDesc: prometheus.NewDesc(
-			"ping_rtt_avg_seconds",
+			prometheus.BuildFQName(metricNamespace, "ping", "rtt_avg_seconds"),
 			"Average round-trip time of ICMP pings.",
 			labels, nil,
 		),
 		rttMinDesc: prometheus.NewDesc(
-			"ping_rtt_min_seconds",
+			prometheus.BuildFQName(metricNamespace, "ping", "rtt_min_seconds"),
 			"Minimum round-trip time of ICMP pings.",
 			labels, nil,
 		),
 		rttMaxDesc: prometheus.NewDesc(
-			"ping_rtt_max_seconds",
+			prometheus.BuildFQName(metricNamespace, "ping", "rtt_max_seconds"),
 			"Maximum round-trip time of ICMP pings.",
 			labels, nil,
 		),
 		lossDesc: prometheus.NewDesc(
-			"ping_loss_ratio",
+			prometheus.BuildFQName(metricNamespace, "ping", "loss_ratio"),
 			"Packet loss ratio for ICMP pings (0 = no loss, 1 = total loss).",
 			labels, nil,
 		),

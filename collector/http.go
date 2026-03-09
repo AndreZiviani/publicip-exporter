@@ -106,17 +106,17 @@ func NewHTTPCollector(cfg HTTPConfig) *HTTPCollector {
 		clients: clients,
 		stats:   make(map[httpStatsKey]httpStats),
 		durationDesc: prometheus.NewDesc(
-			"http_probe_duration_seconds",
+			prometheus.BuildFQName(metricNamespace, "http_probe", "duration_seconds"),
 			"Duration of the last HTTP probe request.",
 			labels, nil,
 		),
 		statusCodeDesc: prometheus.NewDesc(
-			"http_probe_status_code",
+			prometheus.BuildFQName(metricNamespace, "http_probe", "status_code"),
 			"HTTP status code returned by the last probe (0 on connection error).",
 			labels, nil,
 		),
 		successDesc: prometheus.NewDesc(
-			"http_probe_success",
+			prometheus.BuildFQName(metricNamespace, "http_probe", "success"),
 			"Whether the last HTTP probe succeeded (1 = 2xx response, 0 otherwise).",
 			labels, nil,
 		),

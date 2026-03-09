@@ -67,7 +67,7 @@ func NewIPInfoCollector(cfg IPInfoConfig) *IPInfoCollector {
 		ipv4Client: ipv4Client,
 		ipv6Client: ipv6Client,
 		infoDesc: prometheus.NewDesc(
-			"publicip_info",
+			prometheus.BuildFQName(metricNamespace, "", "info"),
 			"Public IP address information from ipinfo.io. Value is the AS number.",
 			[]string{"version", "ip", "hostname", "city", "region", "country", "org", "timezone"},
 			nil,
