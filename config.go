@@ -122,12 +122,12 @@ func validateSemantics(cfg *Config) error {
 
 // logConfig logs a summary of the active configuration at startup.
 func logConfig(cfg *Config) {
-	slog.Info("ipinfo collector enabled", "refresh_interval", cfg.IPInfo.RefreshInterval)
+	slog.Info("ipinfo collector enabled", "refresh_interval", cfg.IPInfo.RefreshInterval.String())
 	for _, s := range collectorsFromConfig(cfg) {
 		if len(s.destNames) == 0 {
 			slog.Warn(s.name + " collector has no destinations configured")
 		} else {
-			slog.Info(s.name+" collector enabled", "destinations", len(s.destNames), "interval", s.interval)
+			slog.Info(s.name+" collector enabled", "destinations", len(s.destNames), "interval", s.interval.String())
 		}
 	}
 }
