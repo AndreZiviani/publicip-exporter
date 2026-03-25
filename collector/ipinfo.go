@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"net"
 	"net/http"
 	"os"
 	"strconv"
@@ -23,21 +22,21 @@ type IPInfoConfig struct {
 }
 
 type ipInfoResponse struct {
-	IP       string `json:"ip"`
-	Hostname string `json:"hostname"`
-	City     string `json:"city"`
-	Region   string `json:"region"`
-	Country  string `json:"country"`
-	Org      string `json:"org"`
-	Timezone string `json:"timezone"`
+	IP            string `json:"ip"`
+	ASN           string `json:"asn"`
+	ASName        string `json:"as_name"`
+	ASDomain      string `json:"as_domain"`
+	CountryCode   string `json:"country_code"`
+	Country       string `json:"country"`
+	ContinentCode string `json:"continent_code"`
+	Continent     string `json:"continent"`
 }
 
 // IPInfoCollector fetches public IP information from ipinfo.io for both IPv4
 // and IPv6 and exposes it as a Prometheus info metric.
 type IPInfoCollector struct {
 	config     IPInfoConfig
-	ipv4Client *http.Client
-	ipv6Client *http.Client
+	httpClient *http.Client
 
 	mu       sync.RWMutex
 	ipv4Info *ipInfoResponse
@@ -48,28 +47,13 @@ type IPInfoCollector struct {
 
 // NewIPInfoCollector creates a new IPInfoCollector.
 func NewIPInfoCollector(cfg IPInfoConfig) *IPInfoCollector {
-	// IPv4 client forces tcp4 so it always hits the IPv4 endpoint.
-	d := &net.Dialer{Timeout: 10 * time.Second}
-	ipv4Client := &http.Client{
-		Timeout: 15 * time.Second,
-		Transport: &http.Transport{
-			DialContext: func(ctx context.Context, _, addr string) (net.Conn, error) {
-				return d.DialContext(ctx, "tcp4", addr)
-			},
-		},
-	}
-	// IPv6 client uses the v6.ipinfo.io hostname which resolves to an IPv6-only
-	// address, so no custom dialer is needed.
-	ipv6Client := &http.Client{Timeout: 15 * time.Second}
-
 	return &IPInfoCollector{
 		config:     cfg,
-		ipv4Client: ipv4Client,
-		ipv6Client: ipv6Client,
+		httpClient: &http.Client{Timeout: 15 * time.Second},
 		infoDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(metricNamespace, "", "info"),
-			"Public IP address information from ipinfo.io. Value is the AS number.",
-			[]string{"version", "ip", "hostname", "city", "region", "country", "org", "timezone"},
+			"Public IP address information from ipinfo.io lite API. Value is the AS number.",
+			[]string{"version", "ip", "asn", "as_name", "as_domain", "country_code", "country", "continent_code", "continent"},
 			nil,
 		),
 	}
@@ -104,11 +88,11 @@ func (c *IPInfoCollector) refresh(ctx context.Context) {
 	v6ch := make(chan result, 1)
 
 	go func() {
-		info, err := c.fetch(ctx, c.ipv4Client, "https://ipinfo.io/json")
+		info, err := c.fetch(ctx, "https://v4.api.ipinfo.io/lite/me")
 		v4ch <- result{info, err}
 	}()
 	go func() {
-		info, err := c.fetch(ctx, c.ipv6Client, "https://v6.ipinfo.io/json")
+		info, err := c.fetch(ctx, "https://v6.api.ipinfo.io/lite/me")
 		v6ch <- result{info, err}
 	}()
 
@@ -118,12 +102,12 @@ func (c *IPInfoCollector) refresh(ctx context.Context) {
 	if v4.err != nil {
 		slog.Warn("failed to fetch IPv4 public IP info", "error", v4.err)
 	} else {
-		slog.Debug("fetched IPv4 public IP info", "ip", v4.info.IP, "org", v4.info.Org, "country", v4.info.Country)
+		slog.Debug("fetched IPv4 public IP info", "ip", v4.info.IP, "asn", v4.info.ASN, "country", v4.info.Country)
 	}
 	if v6.err != nil {
 		slog.Warn("failed to fetch IPv6 public IP info", "error", v6.err)
 	} else {
-		slog.Debug("fetched IPv6 public IP info", "ip", v6.info.IP, "org", v6.info.Org, "country", v6.info.Country)
+		slog.Debug("fetched IPv6 public IP info", "ip", v6.info.IP, "asn", v6.info.ASN, "country", v6.info.Country)
 	}
 
 	c.mu.Lock()
@@ -146,7 +130,8 @@ func (c *IPInfoCollector) token() string {
 	return c.config.Token
 }
 
-func (c *IPInfoCollector) fetch(ctx context.Context, client *http.Client, base string) (*ipInfoResponse, error) {
+func (c *IPInfoCollector) fetch(ctx context.Context, base string) (*ipInfoResponse, error) {
+	client := c.httpClient
 	url := base
 	if t := c.token(); t != "" {
 		url = fmt.Sprintf("%s?token=%s", base, t)
@@ -177,13 +162,10 @@ func (c *IPInfoCollector) fetch(ctx context.Context, client *http.Client, base s
 	return &info, nil
 }
 
-// parseASNumber extracts the numeric AS number from an org string like
-// "AS13335 Cloudflare, Inc." and returns it as a float64. Returns 0 if parsing fails.
-func parseASNumber(org string) float64 {
-	// org format: "AS<number> <name>"
-	prefix, _, _ := strings.Cut(org, " ")
-	prefix = strings.TrimPrefix(prefix, "AS")
-	n, err := strconv.ParseFloat(prefix, 64)
+// parseASNumber extracts the numeric AS number from a string like "AS15169"
+// and returns it as a float64. Returns 0 if parsing fails.
+func parseASNumber(asn string) float64 {
+	n, err := strconv.ParseFloat(strings.TrimPrefix(asn, "AS"), 64)
 	if err != nil {
 		return 0
 	}
@@ -204,16 +186,16 @@ func (c *IPInfoCollector) Collect(ch chan<- prometheus.Metric) {
 
 	if ipv4Info != nil {
 		ch <- prometheus.MustNewConstMetric(
-			c.infoDesc, prometheus.GaugeValue, parseASNumber(ipv4Info.Org),
-			"4", ipv4Info.IP, ipv4Info.Hostname, ipv4Info.City,
-			ipv4Info.Region, ipv4Info.Country, ipv4Info.Org, ipv4Info.Timezone,
+			c.infoDesc, prometheus.GaugeValue, parseASNumber(ipv4Info.ASN),
+			"4", ipv4Info.IP, ipv4Info.ASN, ipv4Info.ASName, ipv4Info.ASDomain,
+			ipv4Info.CountryCode, ipv4Info.Country, ipv4Info.ContinentCode, ipv4Info.Continent,
 		)
 	}
 	if ipv6Info != nil {
 		ch <- prometheus.MustNewConstMetric(
-			c.infoDesc, prometheus.GaugeValue, parseASNumber(ipv6Info.Org),
-			"6", ipv6Info.IP, ipv6Info.Hostname, ipv6Info.City,
-			ipv6Info.Region, ipv6Info.Country, ipv6Info.Org, ipv6Info.Timezone,
+			c.infoDesc, prometheus.GaugeValue, parseASNumber(ipv6Info.ASN),
+			"6", ipv6Info.IP, ipv6Info.ASN, ipv6Info.ASName, ipv6Info.ASDomain,
+			ipv6Info.CountryCode, ipv6Info.Country, ipv6Info.ContinentCode, ipv6Info.Continent,
 		)
 	}
 }
