@@ -76,6 +76,7 @@ http:
     #   url: https://internal.example.com/health
     #   method: GET
     #   tls_skip_verify: true
+    #   dns_protocol: udp       # udp | tcp (default: udp)
 
 ping:
   interval: 5s

@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -27,6 +28,7 @@ type HTTPDestination struct {
 	Method        string        `yaml:"method" validate:"omitempty,oneof=GET POST PUT DELETE HEAD OPTIONS PATCH"` // default: GET
 	TLSSkipVerify bool          `yaml:"tls_skip_verify"`                                                         // skip TLS certificate verification
 	AddressFamily AddressFamily `yaml:"address_family" validate:"omitempty,oneof=ipv4 ipv6 both"`                // ipv4 | ipv6 | both (default: both)
+	DNSProtocol   DNSProtocol   `yaml:"dns_protocol" validate:"omitempty,oneof=udp tcp"`                         // udp | tcp (default: udp)
 }
 
 func (d HTTPDestination) method() string {
@@ -72,10 +74,18 @@ func NewHTTPCollector(cfg HTTPConfig) *HTTPCollector {
 	for _, dest := range cfg.Destinations {
 		for _, af := range dest.families() {
 			key := httpStatsKey{name: dest.Name, af: af}
-			d := &net.Dialer{Timeout: cfg.Timeout}
 			network := "tcp4"
 			if af == AddressFamilyIPv6 {
 				network = "tcp6"
+			}
+			d := &net.Dialer{Timeout: cfg.Timeout}
+			if dest.DNSProtocol == DNSProtocolTCP {
+				d.Resolver = &net.Resolver{
+					PreferGo: true,
+					Dial: func(ctx context.Context, dnsNetwork, address string) (net.Conn, error) {
+						return (&net.Dialer{}).DialContext(ctx, strings.Replace(dnsNetwork, "udp", "tcp", 1), address)
+					},
+				}
 			}
 			clients[key] = &http.Client{
 				Timeout: cfg.Timeout,
