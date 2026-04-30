@@ -9,6 +9,8 @@ before:
 builds:
   - env:
       - CGO_ENABLED=0
+      # bypass the musl DNS resolver and use Go's native DNS implementation.
+      - GODEBUG=netdns=go
     goos:
       - linux
       - darwin
