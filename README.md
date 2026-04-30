@@ -105,6 +105,7 @@ dns:
       server: 8.8.8.8
       query: google.com
       query_type: A             # A | AAAA (default: A)
+      protocol: udp             # udp | tcp (default: udp)
     - name: cloudflare-dns
       server: 1.1.1.1
       query: cloudflare.com

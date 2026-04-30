@@ -18,6 +18,14 @@ const (
 	DNSQueryTypeAAAA DNSQueryType = "AAAA"
 )
 
+// DNSProtocol controls the transport protocol used for DNS queries.
+type DNSProtocol string
+
+const (
+	DNSProtocolUDP DNSProtocol = "udp"
+	DNSProtocolTCP DNSProtocol = "tcp"
+)
+
 // DNSConfig holds configuration for the DNS probe collector.
 type DNSConfig struct {
 	Interval     time.Duration    `yaml:"interval" validate:"gt=0"`
@@ -28,9 +36,10 @@ type DNSConfig struct {
 // DNSDestination is a single DNS probe target.
 type DNSDestination struct {
 	Name      string       `yaml:"name" validate:"required"`
-	Server    string       `yaml:"server" validate:"required,ip"`     // nameserver IP address (e.g. "8.8.8.8", "[2001:4860:4860::8888]")
-	Query     string       `yaml:"query" validate:"required,hostname"` // domain name to resolve (e.g. "google.com")
+	Server    string       `yaml:"server" validate:"required,ip"`                // nameserver IP address (e.g. "8.8.8.8", "[2001:4860:4860::8888]")
+	Query     string       `yaml:"query" validate:"required,hostname"`            // domain name to resolve (e.g. "google.com")
 	QueryType DNSQueryType `yaml:"query_type" validate:"omitempty,oneof=A AAAA"` // A | AAAA (default: A)
+	Protocol  DNSProtocol  `yaml:"protocol" validate:"omitempty,oneof=udp tcp"`  // udp | tcp (default: udp)
 }
 
 // resolvedQueryType returns the query type, defaulting to A.
@@ -41,6 +50,14 @@ func (d DNSDestination) resolvedQueryType() DNSQueryType {
 	return DNSQueryTypeA
 }
 
+// resolvedProtocol returns the transport protocol, defaulting to udp.
+func (d DNSDestination) resolvedProtocol() DNSProtocol {
+	if d.Protocol == DNSProtocolTCP {
+		return DNSProtocolTCP
+	}
+	return DNSProtocolUDP
+}
+
 // network returns the net.Resolver network string for this query type.
 func (d DNSDestination) network() string {
 	if d.resolvedQueryType() == DNSQueryTypeAAAA {
@@ -49,13 +66,14 @@ func (d DNSDestination) network() string {
 	return "ip4"
 }
 
-// dialNetwork returns the UDP dial network for reaching the nameserver.
+// dialNetwork returns the dial network for reaching the nameserver.
 func (d DNSDestination) dialNetwork() string {
+	proto := string(d.resolvedProtocol())
 	ip := net.ParseIP(d.Server)
 	if ip != nil && ip.To4() == nil {
-		return "udp6"
+		return proto + "6"
 	}
-	return "udp4"
+	return proto + "4"
 }
 
 // serverAddr returns the nameserver address with port.
