@@ -1,4 +1,4 @@
-FROM gcr.io/distroless/static-debian13:latest
+FROM alpine:3
 
 ENV HOME=/app
 USER 1000:1000
