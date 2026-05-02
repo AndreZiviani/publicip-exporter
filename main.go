@@ -37,22 +37,28 @@ func main() {
 	}
 
 	reg := prometheus.NewRegistry()
-	reg.MustRegister(
+
+	var registerer prometheus.Registerer = reg
+	if len(cfg.GlobalLabels) > 0 {
+		registerer = prometheus.WrapRegistererWith(prometheus.Labels(cfg.GlobalLabels), reg)
+	}
+
+	registerer.MustRegister(
 		collectors.NewGoCollector(),
 		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
 	)
 
 	ipInfoCollector := collector.NewIPInfoCollector(cfg.IPInfo)
-	reg.MustRegister(ipInfoCollector)
+	registerer.MustRegister(ipInfoCollector)
 
 	pingCollector := collector.NewPingCollector(cfg.Ping)
-	reg.MustRegister(pingCollector)
+	registerer.MustRegister(pingCollector)
 
 	httpCollector := collector.NewHTTPCollector(cfg.HTTP)
-	reg.MustRegister(httpCollector)
+	registerer.MustRegister(httpCollector)
 
 	dnsCollector := collector.NewDNSCollector(cfg.DNS)
-	reg.MustRegister(dnsCollector)
+	registerer.MustRegister(dnsCollector)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

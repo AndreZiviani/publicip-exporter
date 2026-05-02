@@ -18,11 +18,12 @@ type ServerConfig struct {
 }
 
 type Config struct {
-	Server ServerConfig           `yaml:"server"`
-	IPInfo collector.IPInfoConfig  `yaml:"ipinfo"`
-	Ping   collector.PingConfig    `yaml:"ping"`
-	HTTP   collector.HTTPConfig    `yaml:"http"`
-	DNS    collector.DNSConfig     `yaml:"dns"`
+	Server       ServerConfig           `yaml:"server"`
+	GlobalLabels map[string]string      `yaml:"global_labels"`
+	IPInfo       collector.IPInfoConfig `yaml:"ipinfo"`
+	Ping         collector.PingConfig   `yaml:"ping"`
+	HTTP         collector.HTTPConfig   `yaml:"http"`
+	DNS          collector.DNSConfig    `yaml:"dns"`
 }
 
 func defaultConfig() *Config {
@@ -122,6 +123,9 @@ func validateSemantics(cfg *Config) error {
 
 // logConfig logs a summary of the active configuration at startup.
 func logConfig(cfg *Config) {
+	if len(cfg.GlobalLabels) > 0 {
+		slog.Info("global labels configured", "count", len(cfg.GlobalLabels))
+	}
 	slog.Info("ipinfo collector enabled", "refresh_interval", cfg.IPInfo.RefreshInterval.String())
 	for _, s := range collectorsFromConfig(cfg) {
 		if len(s.destNames) == 0 {

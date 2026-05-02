@@ -1,6 +1,15 @@
 server:
   listen_address: ":9101"
 
+# Static labels applied to every metric emitted by this exporter.
+# Reserved names (collide with metric labels): version, ip, asn, as_name,
+# as_domain, country_code, country, continent_code, continent, destination,
+# host, url, server, query, query_type.
+# global_labels:
+#   environment: production
+#   region: us-east-1
+#   instance_role: edge
+
 ipinfo:
   # Optional API token from ipinfo.io for higher rate limits.
   # token: "your_token_here"
